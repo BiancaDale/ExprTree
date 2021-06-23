@@ -1,227 +1,235 @@
-/*
- * ExprTree.java
- *
- * Computer Science S-111, Harvard University
- */ 
-
-import java.util.*;
 
 /**
- * ExprTree - a class for representing a binary tree that represents
- * an arithmetic expression involving the operators +, -, *, or /.
- * The terms must be single lower-case letters and the expression must
- * be fully parenthesized, e.g.:
- *
- *      (((a + b) * c) + (d - (e / f)))
+ * A class for experimenting with expression trees.  This class includes 
+ * a nested abstract class and several subclasses that represent nodes in
+ * an expression tree.  It also includes several methods that work with these
+ * classes.
  */
-public class ExprTree {
-    private class Node {
-        private char contents;   // either an arithmetic operator or a..z
-        private Node left;       // left child
-        private Node right;      // right child
-        
-        /* 
-         * isLeaf() - is the specified node a leaf node? 
-         */
-        private boolean isLeaf() {
-            return (left == null && right == null);
-        }
-    }
-    
-    private Node root;
-    private Scanner in;
-    
-    public ExprTree() {
-        root = null;
-        in = new Scanner(System.in);
-    }
-    
-    /**
-     * inorderPrint - uses infix notation to print the expression tree.
-     * It calls inorderPrintTree to perform a recursive inorder traversal.
-     */
-    public void inorderPrint() {
-        if (root != null) {
-            inorderPrintTree(root);
-        }
-    }
-    
-    /*
-     * inorderPrintTree - uses infix notation to print the (sub)tree
-     * with the specified root.  It makes recursive calls to print the
-     * left and right subtrees of the specified root.
-     */
-    private static void inorderPrintTree(Node root) {
-        if (root.isLeaf())
-            System.out.print(root.contents);
-        else {
-            // internal node - an operator
-            System.out.print("(");
-            inorderPrintTree(root.left);
-            System.out.print(" " + root.contents + " ");
-            inorderPrintTree(root.right);
-            System.out.print(")");
-        }
-    }
-    
-    /**
-     * preorderPrint - uses prefix notation to print the expression tree.
-     * It calls preorderPrintTree to perform a recursive preorder traversal.
-     */
-    public void preorderPrint() {
-        if (root != null) {
-            preorderPrintTree(root);
-        }
-    }
-    
-    /*
-     * preorderPrintTree - uses prefix notation to print the
-     * expression tree that has the specified node as its root.  It
-     * prints the tree by performing a recursive preorder traversal.
-     */
-    private static void preorderPrintTree(Node root) {
-        if (root.isLeaf()) {
-            System.out.print(root.contents);
-        } else {
-            // interior node -- an operator
-            // first the node itself (the root of the subtree)
-            switch (root.contents) {
-                case '+':
-                    System.out.print("add"); 
-                    break;
-                case '-':
-                    System.out.print("subtr"); 
-                    break;
-                case '*':
-                    System.out.print("mult"); 
-                    break;
-                case '/':
-                    System.out.print("divide"); 
-                    break;
+public class Expressions {
+	
+	/**
+	 * The main routine tests some of the things that are defined in this class.
+	 */
+	public static void main(String[] args) {
+		
+		System.out.println("Testing expression creation and evaluation...\n");
+		ExpNode e1 = new BinOpNode('+', new VariableNode(), new ConstNode(3));
+		ExpNode e2 = new BinOpNode('*', new ConstNode(2), new VariableNode());
+		ExpNode e3 = new BinOpNode('-', e1, e2);
+		ExpNode e4 = new BinOpNode('/', e1, new ConstNode(-3));
+		System.out.println("Testing random expression...\n");
+		System.out.println(randomExpression(2));
+		
+		
+		
+		System.out.println("For x = 3:");
+		System.out.println("   " + e1 + " = " + e1.value(3));
+		System.out.println("   " + e2 + " = " + e2.value(3));
+		System.out.println("   " + e3 + " = " + e3.value(3));
+		System.out.println("   " + e4 + " = " + e4.value(3));
+		System.out.println("\nTesting copying...");
+		System.out.println("   copy of " + e1 + " gives " + copy(e1));
+		System.out.println("   copy of " + e2 + " gives " + copy(e2));
+		System.out.println("   copy of " + e3 + " gives " + copy(e3));
+		System.out.println("   copy of " + e4 + " gives " + copy(e4));
+		
+		ExpNode e3copy = copy(e3);  // make a copy of e3, where e3.left is e1
+		((BinOpNode)e1).left = new ConstNode(17);  // make a modification to e1
+		System.out.println("   modified e3: " + e3 + "; copy should be unmodified: " + e3copy);
+		System.out.println("\nChecking test data...");
+		double[][] dt = makeTestData();
+		for (int i = 0; i < dt.length; i++) {
+			System.out.println("   x = " + dt[i][0] + "; y = " + dt[i][1]);
+			
+		}	
+		
+	}
+	
+	/**
+	 * Given an ExpNode that is the root of an expression tree, this method
+	 * makes a full copy of the tree.  The tree that is returned is constructed
+	 * entirely of freshly made nodes.  (That is, there are no pointers back
+	 * into the old copy.)
+	 */
+	static ExpNode copy(ExpNode root) {
+		if (root instanceof ConstNode)
+			return new ConstNode(((ConstNode)root).number);
+		else if (root instanceof VariableNode)
+			return new VariableNode();
+		else {
+			BinOpNode node = (BinOpNode)root;
+			// Note that left and right operand trees have to be COPIED, 
+			// not just referenced.
+			return new BinOpNode(node.op, copy(node.left), copy(node.right));
+		}
+	}
+	
+	/**
+	 * Returns an n-by-2 array containing sample input/output pairs. If the
+	 * return value is called data, then data[i][0] is the i-th input (or x)
+	 * value and data[i][1] is the corresponding output (or y) value.
+	 * (This method is currently unused, except to test it.)
+	 */
+	static double [][] makeTestData() {
+		double[][] data = new double[21][2];
+		double xmax = 5;
+		double xmin = -5;
+		double dx = (xmax - xmin) / (data.length - 1);
+		for (int i = 0; i < data.length; i++) {
+			double x = xmin + dx * i;
+			double y = 2.5*x*x*x - x*x/3 + 3*x;
+			data[i][0] = x;
+			data[i][1] = y;
+		}
+		return data;
+	}
+	
+	
+	
+	static ExpNode randomExpression(int maxHeight) {
+
+        ExpNode sol = null;
+        int currentHeight = 0;
+
+        //generating nodes for as long as maxHeight isn't met
+        while (currentHeight < maxHeight) {
+
+            String generateWhat;
+
+            // randomly determine what kind of node to make
+            if (currentHeight == 0) {
+                double chance = (Math.random() * 100);
+                if (chance < 40) {
+                    generateWhat = "ConstNode";
+                } else {
+                    generateWhat = "VariableNode";
+                }
+            } else {
+                double chance = Math.random() * 100;
+                if (chance < 10) {
+                    generateWhat = "ConstNode";
+                } else if (chance < 25){
+                    generateWhat = "VariableNode";
+                }
+                else {
+                    generateWhat = "BinOpNode";
+                }
             }
-            
-            // then the left and right subtrees
-            System.out.print("(");
-            preorderPrintTree(root.left);
-            System.out.print(", ");
-            preorderPrintTree(root.right);
-            System.out.print(")");
-        }
-    }
-    
-    /**
-     * postorderPrint - uses postfix notation to print the expression tree.
-     * It calls postorderPrintTree to perform a recursive postorder traversal.
-     */
-    public void postorderPrint() {
-        if (root != null) {
-            postorderPrintTree(root, 0);
-        }
-    }
-    
-    /*
-     * postorderPrintTree - uses postfix notation to print the
-     * expression tree that has the specified node as its root.  It
-     * prints the tree by performing a recursive postorder traversal.
-     * The margin argument helps to align the output properly.
-     */
-    private static void postorderPrintTree(Node root, int margin) {
-        if (root.isLeaf()) {
-            printMargin(margin);
-            System.out.print(root.contents + "  ");
-        } else {
-            postorderPrintTree(root.left, margin + 1);
-            postorderPrintTree(root.right, margin + 1);
-            
-            printMargin(margin);
-            switch (root.contents) {
-                case '+':
-                    System.out.print("add above"); 
-                    break;
-                case '-':
-                    System.out.print("subtract above"); 
-                    break;
-                case '*':
-                    System.out.print("multiply above"); 
-                    break;
-                case '/':
-                    System.out.print("divide above"); 
-                    break;
+
+            // doing 1-10 just to keep it simple while testing
+            double random = Math.floor(Math.random() * 10 + 1);
+            if (generateWhat == "ConstNode") {
+                sol = new ConstNode(random);
+            } else if (generateWhat == "VariableNode") {
+                sol = new VariableNode();
+            } else if (generateWhat == "BinOpNode") {
+
+                double chance = (Math.random() * 100);
+                char op;
+
+                if (chance > 75) {
+                    op = '+';
+                } else if (chance > 50) {
+                    op = '-';
+                } else if (chance > 25) {
+                    op = '/';
+                } else {
+                    op = '*';
+                }
+                sol = new BinOpNode(op, randomExpression(maxHeight - 1), randomExpression(maxHeight - 1));
             }
+            currentHeight++;
+        }
+        assert sol != null;
+        return sol;
+    }
+	 static void compute(ExpNode f, double[][] sampleData) {
+		sampleData = makeTestData();
+		for (int i = 0; i < sampleData.length; i++) {
+			System.out.println("   x = " + sampleData[i][0] + "; y = " + sampleData[i][1]);
+			
+		}	
         }
     }
+
+          
+	
+
+
+	//------------------- Definitions of Expression node classes ---------
+	
+	/**
+	 * An abstract class that represents a general node in an expression
+	 * tree.  Every such node must be able to compute its own value at
+	 * a given input value, x.  Also, nodes should override the standard
+	 * toString() method to return a fully parameterized string representation
+	 * of the expression.
+	 */
+	abstract class ExpNode {
+		abstract double value(double x);
+		// toString method should also be defined in each subclass
+	}
+	
+	/**
+	 * A node in an expression tree that represents a constant numerical value.
+	 */
+	class ConstNode extends ExpNode {
+		double number;  // the number in this node.
+		ConstNode(double number) {
+			this.number = number;
+		}
+		double value(double x) {
+			return number;
+		}
+		public String toString() {
+			if (number < 0)
+				return "(" + number + ")"; // add parentheses around negative number
+			else
+				return "" + number;  // just convert the number to a string
+		}
+	}
+	
+	/**
+	 * A node in an expression tree that represents the variable x.
+	 */
+	class VariableNode extends ExpNode {
+		VariableNode() {
+		}
+		double value(double x) {
+			return x;
+		}
+		public String toString() {
+			return "x";
+		}
+	}
+	
+	/**
+	 * A node in an expression tree that represents one of the
+	 * binary operators +, -, *, or /.
+	 */
+	class BinOpNode extends ExpNode {
+		char op;  // the operator, which must be '+', '-', '*', or '/'
+		ExpNode left, right;  // the expression trees for the left and right operands.
+		BinOpNode(char op, ExpNode left, ExpNode right) {
+			if (op != '+' && op != '-' && op != '*' && op != '/')
+				throw new IllegalArgumentException("'" + op + "' is not a legal operator.");
+			this.op = op;
+			this.left = left;
+			this.right = right;
+		}
+		double value(double x) {
+			double a = left.value(x);  // value of the left operand expression tree
+			double b = right.value(x); // value of the right operand expression tree
+			switch (op) {
+			case '+': return a + b;
+			case '-': return a - b;
+			case '*': return a * b;
+			default:  return a / b;
+			}
+		}
+		public String toString() {
+			return "(" + left.toString() + op + right.toString() + ")";
+		}
+	}
+	  
     
-    /**
-     * printMargin - used to print leading spaces when outputting
-     * expressions in postfix notation
-     */
-    private static void printMargin(int margin) {
-        System.out.println();
-        for (int i = 1; i <= margin; i++) {
-            System.out.print("    ");
-        }
-    }
-    
-    /**
-     * readExpression - parses an arithmetic expression entered at the
-     * keyboard and builds an expression tree for the expression.  It
-     * calls readTree to recursively process the expression.
-     */
-    public void read() {
-        root = readTree();
-    }
-    
-    /*
-     * readTree - recursively parses an arithmetic expression obtained
-     * from the user and builds a binary tree for the expression.  The
-     * root of the tree is returned.
-     */
-    private Node readTree() {
-        Node n = new Node();
-        
-        // get next non-whitespace char
-        char ch = in.findInLine("(\\S)").charAt(0);
-        if ((ch >= 'a') && (ch <='z')) {
-            // leaf node
-            n.contents = ch;
-            n.left = null;
-            n.right = null;
-        } else if (ch == '(') {
-            // an expression
-            n.left = readTree();
-            n.contents = in.findInLine("(\\S)").charAt(0);
-            n.right = readTree();
-            ch = in.findInLine("(\\S)").charAt(0);
-            if (ch != ')') {
-                System.out.print("EXPECTED ) - } ASSUMED...");
-            }
-        } else {
-            System.out.print("EXPECTED ( - CAN'T PARSE");
-            System.exit(1);
-        }
-        
-        return n;
-    }
-    
-    /*
-     * Program to read an arithmetic expression, convert it to a tree, and
-     * print the tree in infix, prefix, and postfix notation.
-     */
-    public static void main(String[] args) {
-        // Read in the expression and build the tree.
-        System.out.println("\nType a fully parenthesized expression " +
-                           "using a..z,+,-,*,/");
-        
-        ExprTree tree = new ExprTree();
-        tree.read();
-        
-        // Output it using all three types of notation.
-        System.out.println("\n* INFIX NOTATION:");
-        tree.inorderPrint();
-        System.out.print("\n\n* PREFIX NOTATION:\n");
-        tree.preorderPrint();
-        System.out.print("\n\n* POSTFIX NOTATION:");
-        tree.postorderPrint();
-        System.out.println();
-    }
-}
